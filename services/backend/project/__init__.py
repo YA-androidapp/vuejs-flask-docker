@@ -22,13 +22,14 @@ admin = Admin(template_mode="bootstrap3")
 def create_app(script_info=None):
 
     # Initialize Sentry.io
-    #sentry_sdk.init(
+    # sentry_sdk.init(
     #    dsn="http://bb28b1aa56e8475e964719f4f3416e63@sentry:9000/1",
     #    integrations=[FlaskIntegration()]
-    #)
+    # )
 
     # instantiate the app
     app = Flask(__name__)
+    CORS(app)
 
     # set config
     app_settings = os.getenv("APP_SETTINGS")
@@ -36,7 +37,7 @@ def create_app(script_info=None):
 
     # set up extensions
     db.init_app(app)
-    cors.init_app(app, resources={r"*": {"origins": "*"}})
+    # cors.init_app(app, resources={r"*": {"origins": "*"}})
     bcrypt.init_app(app)
     if os.getenv("FLASK_ENV") == "development":
         admin.init_app(app)
