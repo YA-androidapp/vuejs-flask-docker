@@ -1,8 +1,12 @@
 # services/users/project/api/users/views.py
 
 
-from flask import request
+from functools import wraps
+
+from flask import request, jsonify, current_app
 from flask_restplus import Resource, fields, Namespace
+
+import jwt
 
 from project.api.users.services import (
     get_all_users,
@@ -12,6 +16,8 @@ from project.api.users.services import (
     update_user,
     delete_user,
 )
+
+from project.api.users.models import User
 
 
 users_namespace = Namespace("users")
@@ -31,12 +37,39 @@ user_post = users_namespace.inherit(
 )
 
 
+def jwt_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+
+        token = None
+
+        if 'Authorization' in request.headers:
+            auth_header = request.headers.get("Authorization")
+            token = auth_header
+            resp = User.decode_token(token)
+
+        if not resp:
+            users_namespace.abort(404, f"a valid token is missing")
+
+        try:
+            user = get_user_by_id(resp)
+            if not user:
+                users_namespace.abort(404, f"User does not exist")
+        except Exception as e:
+            users_namespace.abort(404, f"a valid token is missing")
+
+        return f(*args, **kwargs)
+    return decorator
+
+
 class UsersList(Resource):
+    @jwt_required
     @users_namespace.marshal_with(user, as_list=True)
     def get(self):
         """Returns all users."""
         return get_all_users(), 200
 
+    @jwt_required
     @users_namespace.expect(user_post, validate=True)
     @users_namespace.response(201, "<user_email> was added!")
     @users_namespace.response(400, "Sorry. That email already exists.")
@@ -58,6 +91,7 @@ class UsersList(Resource):
 
 
 class Users(Resource):
+    @jwt_required
     @users_namespace.marshal_with(user)
     @users_namespace.response(200, "Success")
     @users_namespace.response(404, "User <user_id> does not exist")
@@ -68,6 +102,7 @@ class Users(Resource):
             users_namespace.abort(404, f"User {user_id} does not exist")
         return user, 200
 
+    @jwt_required
     @users_namespace.expect(user, validate=True)
     @users_namespace.response(200, "<user_is> was updated!")
     @users_namespace.response(404, "User <user_id> does not exist")
@@ -85,6 +120,7 @@ class Users(Resource):
         response_object["message"] = f"{user.id} was updated!"
         return response_object, 200
 
+    @jwt_required
     @users_namespace.response(200, "<user_is> was removed!")
     @users_namespace.response(404, "User <user_id> does not exist")
     def delete(self, user_id):

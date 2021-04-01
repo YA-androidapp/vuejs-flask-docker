@@ -119,6 +119,7 @@
 
         methods: {
             initialize() {
+                axios.defaults.headers.common['Authorization'] = localStorage.getItem('token')
                 axios({ url: process.env.VUE_APP_API_URL + '/users', method: 'GET' }).then((resp) => {
                         this.users=resp.data
                 })
